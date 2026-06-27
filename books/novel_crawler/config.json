@@ -1,0 +1,134 @@
+{
+  "search": {
+    "keywords": [
+      "快穿", "无限流", "综影视", "综漫", "诸天流", "副本攻略", "炮灰逆袭", "炮灰攻略",
+      "穿书攻略", "系统文", "穿越万界", "位面穿越", "多世界", "无限副本", "世界任务",
+      "积分兑换", "世界穿梭", "万界穿行", "穿书", "快穿甜宠", "快穿逆袭", "快穿HE",
+      "#快穿#", "#无限流#", "#综影视#", "#综漫#", "#副本#", "#炮灰攻略#", "#系统文#",
+      "#穿书#", "#快穿 HE#", "#快穿 甜宠#", "#快穿 逆袭#", "#无限副本#", "#诸天流#"
+    ],
+    "regex_filter": {
+      "title": "(快穿|无限流|综影视|综漫|世界穿梭|穿书攻略|炮灰攻略|副本攻略|穿越万界|万界穿行|位面穿越|多世界)[^，,。]{0,15}|穿越(万界|诸界|多世界)|副本(攻略|通关)|炮灰(逆袭|攻略|系统)",
+      "intro": "【(快穿|无限流)[^】]{0,20}】|快穿\\+|炮灰攻略系统|世界任务|每个世界都|穿越[不同各]{0,2}世界|副本(攻略|通关|完成)|积分兑换",
+      "content_strong": "第[一二三四五六七八九十百零\\d]+个世界|世界[一二三四五六七八九十\\d][：:：]|(下一个?|下个)(世界|副本)|(世界|副本)(完成|结束|通关)|(进入|来到)了?第[一二三四五六七八九十百零\\d]+(个)?(世界|副本)",
+      "content_weak": "(恭喜宿主|任务(完成|失败)|宿主[，,。！!])",
+      "content_booster": "(快穿|无限流|副本完成|下一个世界|穿越世界|积分兑换|炮灰攻略系统)",
+      "all_combined": "快穿|无限流|综影视|综漫|炮灰攻略|穿书攻略|副本攻略|穿越万界|万界穿行|位面穿越|世界穿梭|多世界|【(快穿|无限流)[^】]{0,20}】|快穿\\+|炮灰攻略系统|世界任务|每个世界都|穿越[不同各]{0,2}世界|副本(攻略|通关|完成)|积分兑换|第[一二三四五六七八九十百零\\d]+个世界|世界[一二三四五六七八九十\\d][：:：]|(下一个?|下个)(世界|副本)|(世界|副本)(完成|结束|通关)"
+    },
+    "max_pages": 999,
+    "results_per_site": 999999
+  },
+  "crawler": {
+    "concurrency": 1,
+    "request_delay": 3.0,
+    "timeout": 60,
+    "retry_count": 3,
+    "user_agents": [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0"
+    ]
+  },
+  "download": {
+    "output_dir": "downloads",
+    "max_file_size_mb": 50,
+    "verify_content": true,
+    "verify_sample_bytes": 50000,
+    "organize_by": "category",
+    "format_filter": [".txt", ".zip"],
+    "auto_unzip": true
+  },
+  "proxy": {
+    "enabled": false,
+    "http": "",
+    "https": ""
+  },
+  "sites": [
+    {
+      "name": "爱下电子书",
+      "enabled": true,
+      "base_url": "https://ixdzs8.com/",
+      "handler": "ixdzs8_handler"
+    },
+    {
+      "name": "知轩藏书",
+      "enabled": true,
+      "base_url": "http://zxcs.me/",
+      "handler": "zhixuan_handler"
+    },
+    {
+      "name": "帝国CMS系",
+      "enabled": true,
+      "base_url": "",
+      "handler": "empire_cms_handler",
+      "sub_sites": ["贼吧网", "9奇书", "熬夜下载", "奇书de", "ijj小说", "精校吧", "爱悦读", "勤看书", "爱下书"]
+    },
+    {
+      "name": "精校全本",
+      "enabled": true,
+      "base_url": "https://noveless.com/",
+      "handler": "noveless_handler"
+    },
+    {
+      "name": "好读",
+      "enabled": true,
+      "base_url": "https://www.haodoo.net/",
+      "handler": "haodoo_handler"
+    },
+    {
+      "name": "小说下载吧",
+      "enabled": true,
+      "base_url": "http://www.txt8.net/",
+      "handler": "txt8_handler"
+    },
+    {
+      "name": "TXT图书下载网",
+      "enabled": true,
+      "base_url": "http://www.bookdown.com.cn/",
+      "handler": "bookdown_handler"
+    },
+    {
+      "name": "笔趣阁系",
+      "enabled": true,
+      "base_url": "",
+      "handler": "biquge_handler"
+    },
+    {
+      "name": "TXT下载站",
+      "enabled": true,
+      "base_url": "",
+      "handler": "txt_download_handler"
+    },
+    {
+      "name": "更多下载站",
+      "enabled": true,
+      "base_url": "",
+      "handler": "more_download_handler",
+      "sub_sites": ["奇书网qisuwang", "铅笔小说", "sjwx.info", "sjtxt.com", "17K下载", "bookshuku.info", "爱下电子书baimin"]
+    },
+    {
+      "name": "自定义搜索",
+      "enabled": true,
+      "base_url": "",
+      "handler": "custom_search_handler",
+      "sub_sites": ["宝书网", "酷我书", "免费小说网", "万卷txt", "哈哈文学", "完结小说网", "txt139", "渣渣小说网", "80奇书", "无限小说", "999txt", "小说吧", "mashimaro3", "久久小说网", "乐读电子书", "小说之家", "爱书网", "TXT小说网", "山西长篇", "书籍知识库", "棉花糖小说网", "当书网", "下书网", "全本小说网", "奇书网qishuta"]
+    },
+    {
+      "name": "熊猫搜书",
+      "enabled": true,
+      "base_url": "https://xmsoushu.com/",
+      "handler": "xmsoushu_handler"
+    },
+    {
+      "name": "通用搜索",
+      "enabled": true,
+      "base_url": "",
+      "handler": "generic_handler"
+    }
+  ],
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8765,
+    "auto_open": true
+  }
+}

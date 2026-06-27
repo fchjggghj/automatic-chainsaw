@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能小说爬虫下载器</title>
+<style>
+:root {
+  --bg: #f8f9fa;
+  --card: #fff;
+  --border: #e2e5e9;
+  --text: #1a1a2e;
+  --text2: #6b7280;
+  --text3: #9ca3af;
+  --accent: #534AB7;
+  --accent-light: #EEEDFE;
+  --green: #1D9E75;
+  --green-light: #E1F5EE;
+  --red: #D85A30;
+  --red-light: #FAECE7;
+  --amber: #BA7517;
+  --amber-light: #FAEEDA;
+  --blue: #2563EB;
+  --blue-light: #EFF6FF;
+  --radius: 10px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.6; }
+.header { background: var(--card); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.header h1 { font-size: 17px; font-weight: 600; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.status-dot.idle { background: var(--text3); }
+.status-dot.running { background: var(--green); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
+.panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
+.panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.panel-header h2 { font-size: 14px; font-weight: 600; }
+.panel-body { padding: 16px 18px; }
+.search-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.search-input { flex: 1; min-width: 240px; padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: var(--font); outline: none; }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+.btn { padding: 9px 18px; border: none; border-radius: 8px; font-size: 13px; font-family: var(--font); cursor: pointer; font-weight: 500; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { opacity: 0.9; }
+.btn-outline { background: var(--card); color: var(--accent); border: 1px solid var(--accent); }
+.btn-outline:hover { background: var(--accent-light); }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { opacity: 0.9; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { opacity: 0.9; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.tag-accent { background: var(--accent-light); color: var(--accent); }
+.tag-green { background: var(--green-light); color: var(--green); }
+.tag-red { background: var(--red-light); color: var(--red); }
+.tag-amber { background: var(--amber-light); color: var(--amber); }
+.tag-blue { background: var(--blue-light); color: var(--blue); }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.stat-card { background: var(--bg); border-radius: 8px; padding: 12px 14px; }
+.stat-value { font-size: 22px; font-weight: 600; }
+.stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.keyword-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; max-height: 120px; overflow-y: auto; }
+.keyword-tag { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; background: var(--accent-light); color: var(--accent); border-radius: 4px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.keyword-tag .remove { cursor: pointer; opacity: 0.5; font-size: 10px; }
+.keyword-tag .remove:hover { opacity: 1; }
+.results-table { width: 100%; border-collapse: collapse; }
+.results-table th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; border-bottom: 2px solid var(--border); white-space: nowrap; }
+.results-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.results-table tr:hover { background: var(--bg); }
+.results-table .checkbox { width: 18px; height: 18px; cursor: pointer; }
+.log-area { max-height: 360px; overflow-y: auto; background: #1a1a2e; color: #a5d6ff; border-radius: 8px; padding: 14px 16px; font-family: "Cascadia Code", "Fira Code", "Consolas", monospace; font-size: 11px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+.tabs { display: flex; gap: 2px; margin-bottom: 16px; }
+.tab { padding: 8px 18px; border-radius: 8px 8px 0 0; font-size: 13px; cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--text2); }
+.tab.active { background: var(--card); border-color: var(--border); border-bottom-color: var(--card); color: var(--text); font-weight: 500; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.progress-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width .3s; }
+.empty-state { text-align: center; padding: 40px; color: var(--text3); }
+.history-item { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+.filter-row select, .filter-row input { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; }
+.pagination .btn { min-width: 36px; justify-content: center; padding: 6px 10px; }
+.pagination .btn.active-page { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pagination .page-info { font-size: 12px; color: var(--text2); }
+.site-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.site-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; cursor: pointer; transition: all .15s; }
+.site-chip.selected { background: var(--green-light); border-color: var(--green); color: var(--green); }
+.site-chip:hover { border-color: var(--accent); }
+.source-filter { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.source-chip { padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; border: 1px solid var(--border); background: var(--bg); }
+.source-chip.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>智能小说爬虫下载器</h1>
+    <span style="font-size:12px;color:var(--text2)">快穿/无限流/综影视 专用搜索引擎</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="status-dot idle" id="status-dot"></span>
+    <span id="status-text" style="font-size:12px;color:var(--text2)">就绪</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 搜索面板 -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>搜索设置</h2>
+      <span style="font-size:11px;color:var(--text3)" id="site-count"></span>
+    </div>
+    <div class="panel-body">
+      <div class="keyword-tags" id="keyword-tags">
+        <span class="keyword-tag" data-kw="快穿">快穿 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="无限流">无限流 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="综影视">综影视 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="综漫">综漫 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="诸天流">诸天流 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="副本攻略">副本攻略 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="炮灰逆袭">炮灰逆袭 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="炮灰攻略">炮灰攻略 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="穿书攻略">穿书攻略 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="系统文">系统文 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="穿越万界">穿越万界 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="位面穿越">位面穿越 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="多世界">多世界 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="无限副本">无限副本 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="世界任务">世界任务 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="积分兑换">积分兑换 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="世界穿梭">世界穿梭 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="万界穿行">万界穿行 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="穿书">穿书 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="快穿甜宠">快穿甜宠 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="快穿逆袭">快穿逆袭 <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="快穿HE">快穿HE <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#快穿#">#快穿# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#无限流#">#无限流# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#综影视#">#综影视# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#综漫#">#综漫# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#副本#">#副本# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#炮灰攻略#">#炮灰攻略# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#系统文#">#系统文# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#穿书#">#穿书# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#快穿 HE#">#快穿 HE# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#快穿 甜宠#">#快穿 甜宠# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#快穿 逆袭#">#快穿 逆袭# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#无限副本#">#无限副本# <span class="remove">×</span></span>
+        <span class="keyword-tag" data-kw="#诸天流#">#诸天流# <span class="remove">×</span></span>
+      </div>
+      <div class="search-row">
+        <input class="search-input" id="kw-input" placeholder="输入额外关键词，回车添加..." onkeydown="if(event.key==='Enter') addKeyword()">
+        <button class="btn btn-outline btn-sm" onclick="addKeyword()">+ 添加</button>
+        <button class="btn btn-primary" id="btn-search" onclick="startSearch()">开始搜索</button>
+        <button class="btn btn-outline btn-sm" id="btn-search-only" onclick="startSearchOnly()">仅搜索</button>
+        <button class="btn btn-danger btn-sm" id="btn-stop" onclick="stopSearch()" disabled>停止</button>
+      </div>
+      <!-- 站点选择 -->
+      <div class="site-selector" id="site-selector">
+        <span style="font-size:11px;color:var(--text2);margin-right:4px">搜索站点:</span>
+        <span class="site-chip selected" data-site="__all__" onclick="toggleSite(this)">全部站点</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 统计面板 -->
+  <div class="stats-row" id="stats-panel">
+    <div class="stat-card"><div class="stat-value" id="stat-searched">0</div><div class="stat-label">搜索原始结果</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-filtered">0</div><div class="stat-label">正则过滤后</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-downloaded">0</div><div class="stat-label">已下载</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-failed">0</div><div class="stat-label">失败</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-skipped">0</div><div class="stat-label">跳过</div></div>
+  </div>
+
+  <!-- 标签页 -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('results')">搜索结果 <span id="tab-results-count" style="font-size:11px"></span></div>
+    <div class="tab" onclick="switchTab('history')">下载历史</div>
+    <div class="tab" onclick="switchTab('logs')">运行日志</div>
+    <div class="tab" onclick="switchTab('config')">配置</div>
+  </div>
+
+  <!-- 搜索结果 -->
+  <div class="tab-content active" id="tab-results">
+    <div class="panel">
+      <div class="panel-header">
+        <h2>搜索结果</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="source-filter" onchange="filterBySource()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
+            <option value="">全部来源</option>
+          </select>
+          <select id="status-filter" onchange="filterByStatus()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
+            <option value="">全部状态</option>
+            <option value="completed">已完成</option>
+            <option value="failed">失败</option>
+            <option value="skipped">跳过</option>
+            <option value="downloading">下载中</option>
+            <option value="pending">等待中</option>
+          </select>
+          <button class="btn btn-sm btn-outline" onclick="selectAll()">全选</button>
+          <button class="btn btn-sm btn-outline" onclick="deselectAll()">取消</button>
+          <button class="btn btn-sm btn-green" id="btn-download" onclick="startDownload()" disabled>下载选中</button>
+        </div>
+      </div>
+      <div class="panel-body" style="overflow-x:auto">
+        <div id="results-empty" class="empty-state">暂无搜索结果，请先执行搜索</div>
+        <table class="results-table" id="results-table" style="display:none">
+          <thead>
+            <tr>
+              <th style="width:30px"><input type="checkbox" class="checkbox" onchange="toggleAll(this)" id="check-all"></th>
+              <th>书名</th>
+              <th>作者</th>
+              <th>来源</th>
+              <th>状态</th>
+              <th>识别方式</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+        <!-- 分页 -->
+        <div class="pagination" id="pagination" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 历史 -->
+  <div class="tab-content" id="tab-history">
+    <div class="panel">
+      <div class="panel-header">
+        <h2>下载历史</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="history-status-filter" onchange="loadHistory()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
+            <option value="">全部状态</option>
+            <option value="completed">已完成</option>
+            <option value="failed">失败</option>
+          </select>
+        </div>
+      </div>
+      <div class="panel-body" id="history-body"><div class="empty-state">加载中...</div></div>
+      <div class="pagination" id="history-pagination" style="display:none;padding-bottom:14px"></div>
+    </div>
+  </div>
+
+  <!-- 日志 -->
+  <div class="tab-content" id="tab-logs">
+    <div class="log-area" id="log-area">等待日志输出...</div>
+  </div>
+
+  <!-- 配置 -->
+  <div class="tab-content" id="tab-config">
+    <div class="panel">
+      <div class="panel-header"><h2>高级配置</h2></div>
+      <div class="panel-body">
+        <div class="filter-row">
+          <label>最大并发: <input type="number" id="cfg-concurrency" value="3" min="1" max="10" style="width:60px"></label>
+          <label>请求延迟(秒): <input type="number" id="cfg-delay" value="1.5" min="0.5" max="10" step="0.5" style="width:80px"></label>
+          <label>每站结果数: <input type="number" id="cfg-results" value="20" min="5" max="100" style="width:70px"></label>
+          <label>搜索页数: <input type="number" id="cfg-pages" value="5" min="1" max="20" style="width:60px"></label>
+        </div>
+        <div style="margin-top:12px">
+          <label style="display:block;margin-bottom:4px">内容验证正则 (留空使用默认):</label>
+          <textarea id="cfg-regex" style="width:100%;height:80px;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:8px;font-family:monospace"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveConfig()" style="margin-top:8px">保存配置</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let pollingTimer = null;
+let allResults = [];       // 所有搜索结果（本地缓存）
+let filteredResults = [];  // 过滤后的结果
+let selectedItems = new Set();  // 存储选中结果的唯一标识（title+url）
+let currentPage = 1;
+let perPage = 20;
+let historyPage = 1;
+let historyPerPage = 20;
+
+// 初始化
+document.addEventListener("DOMContentLoaded", () => {
+  loadConfig();
+  loadHistory();
+  loadSites();
+  document.querySelectorAll(".keyword-tag .remove").forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      el.parentElement.remove();
+    };
+  });
+});
+
+function getKeywords() {
+  return [...document.querySelectorAll(".keyword-tag")].map(t => t.dataset.kw);
+}
+
+function addKeyword() {
+  const input = document.getElementById("kw-input");
+  const kw = input.value.trim();
+  if (!kw) return;
+  if (getKeywords().includes(kw)) { input.value = ""; return; }
+  const tag = document.createElement("span");
+  tag.className = "keyword-tag";
+  tag.dataset.kw = kw;
+  tag.innerHTML = `${kw} <span class="remove">×</span>`;
+  tag.querySelector(".remove").onclick = () => tag.remove();
+  document.getElementById("keyword-tags").appendChild(tag);
+  input.value = "";
+}
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+  document.querySelector(`.tab[onclick="switchTab('${name}')"]`).classList.add("active");
+  document.getElementById(`tab-${name}`).classList.add("active");
+  if (name === "history") loadHistory();
+}
+
+function setStatus(status, text) {
+  const dot = document.getElementById("status-dot");
+  dot.className = "status-dot " + status;
+  document.getElementById("status-text").textContent = text;
+  document.getElementById("btn-search").disabled = status === "running";
+  document.getElementById("btn-search-only").disabled = status === "running";
+  document.getElementById("btn-stop").disabled = status !== "running";
+}
+
+// ─── 站点加载 ───
+async function loadSites() {
+  try {
+    const resp = await fetch("/api/sites");
+    const data = await resp.json();
+    const container = document.getElementById("site-selector");
+    const sites = data.sites || [];
+    document.getElementById("site-count").textContent = `已集成 ${sites.length} 个站点`;
+    sites.forEach(s => {
+      const chip = document.createElement("span");
+      chip.className = "site-chip selected";
+      chip.dataset.site = s.name;
+      chip.textContent = s.name;
+      chip.onclick = () => toggleSite(chip);
+      container.appendChild(chip);
+    });
+  } catch(e) { console.error(e); }
+}
+
+function toggleSite(chip) {
+  if (chip.dataset.site === "__all__") {
+    // 全选/取消全选
+    const isSelected = chip.classList.contains("selected");
+    document.querySelectorAll(".site-chip").forEach(c => {
+      if (isSelected) c.classList.remove("selected");
+      else c.classList.add("selected");
+    });
+    if (!isSelected) chip.classList.add("selected");
+  } else {
+    chip.classList.toggle("selected");
+    // 取消"全部站点"的选中
+    const allChip = document.querySelector('.site-chip[data-site="__all__"]');
+    const allSelected = [...document.querySelectorAll('.site-chip:not([data-site="__all__"])')].every(c => c.classList.contains("selected"));
+    if (allSelected) allChip.classList.add("selected");
+    else allChip.classList.remove("selected");
+  }
+}
+
+function getSelectedSites() {
+  const allChip = document.querySelector('.site-chip[data-site="__all__"]');
+  if (allChip && allChip.classList.contains("selected")) return null; // 全部
+  const selected = [...document.querySelectorAll('.site-chip.selected:not([data-site="__all__"])')].map(c => c.dataset.site);
+  return selected.length ? selected : null;
+}
+
+// ─── 搜索 ───
+async function startSearch() {
+  const keywords = getKeywords();
+  if (!keywords.length) return alert("请至少添加一个关键词");
+  const site_names = getSelectedSites();
+
+  setStatus("running", "搜索+下载中...");
+  allResults = [];
+  filteredResults = [];
+  selectedItems.clear();
+  currentPage = 1;
+
+  await fetch("/api/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ keywords, site_names, auto_download: true })
+  });
+
+  startPolling();
+}
+
+async function startSearchOnly() {
+  const keywords = getKeywords();
+  if (!keywords.length) return alert("请至少添加一个关键词");
+  const site_names = getSelectedSites();
+
+  setStatus("running", "搜索中...");
+  allResults = [];
+  filteredResults = [];
+  selectedItems.clear();
+  currentPage = 1;
+
+  await fetch("/api/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ keywords, site_names })
+  });
+
+  startPolling();
+}
+
+function startPolling() {
+  if (pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = setInterval(poll, 800);
+  poll();
+}
+
+async function poll() {
+  try {
+    const resp = await fetch("/api/results?per_page=999999");
+    const data = await resp.json();
+
+    allResults = data.results || [];
+    const prog = data.progress || {};
+    const stats = prog.stats || {};
+
+    document.getElementById("stat-searched").textContent = stats.searched || 0;
+    document.getElementById("stat-filtered").textContent = stats.filtered || 0;
+    document.getElementById("stat-downloaded").textContent = stats.downloaded || 0;
+    document.getElementById("stat-failed").textContent = stats.failed || 0;
+    document.getElementById("stat-skipped").textContent = stats.skipped || 0;
+
+    // 更新来源过滤下拉
+    updateSourceFilter(data.sources || []);
+
+    applyFilters();
+    renderResults();
+
+    if (!prog.running && pollingTimer) {
+      clearInterval(pollingTimer);
+      pollingTimer = null;
+      setStatus("idle", "就绪");
+      document.getElementById("btn-download").disabled = allResults.length === 0;
+    }
+
+    // 日志
+    const logResp = await fetch("/api/logs");
+    const logData = await logResp.json();
+    document.getElementById("log-area").textContent = (logData.logs || []).map(l => `[${l.time}] ${l.msg}`).join("\n") || "等待日志...";
+    document.getElementById("log-area").scrollTop = document.getElementById("log-area").scrollHeight;
+
+  } catch(e) { console.error(e); }
+}
+
+function updateSourceFilter(sources) {
+  const select = document.getElementById("source-filter");
+  const current = select.value;
+  const options = ["<option value=\"\">全部来源</option>"];
+  sources.forEach(s => {
+    options.push(`<option value="${esc(s)}">${esc(s)}</option>`);
+  });
+  select.innerHTML = options.join("");
+  select.value = current;
+}
+
+function filterBySource() {
+  currentPage = 1;
+  applyFilters();
+  renderResults();
+}
+
+function filterByStatus() {
+  currentPage = 1;
+  applyFilters();
+  renderResults();
+}
+
+function applyFilters() {
+  const sourceFilter = document.getElementById("source-filter").value;
+  const statusFilter = document.getElementById("status-filter").value;
+  filteredResults = allResults;
+  if (sourceFilter) filteredResults = filteredResults.filter(r => r.source === sourceFilter);
+  if (statusFilter) filteredResults = filteredResults.filter(r => r.status === statusFilter);
+}
+
+function renderResults() {
+  const empty = document.getElementById("results-empty");
+  const table = document.getElementById("results-table");
+  const tbody = document.getElementById("results-body");
+  const count = document.getElementById("tab-results-count");
+  const paginationEl = document.getElementById("pagination");
+
+  const total = filteredResults.length;
+  count.textContent = `(${total})`;
+
+  if (!total) {
+    empty.style.display = "";
+    table.style.display = "none";
+    paginationEl.style.display = "none";
+    return;
+  }
+
+  empty.style.display = "none";
+  table.style.display = "";
+  paginationEl.style.display = "flex";
+
+  const totalPages = Math.ceil(total / perPage);
+  currentPage = Math.max(1, Math.min(currentPage, totalPages));
+  const start = (currentPage - 1) * perPage;
+  const end = Math.min(start + perPage, total);
+  const pageData = filteredResults.slice(start, end);
+
+  // 计算全局索引映射（用于分页显示）
+  const pageIndices = [];
+  for (let i = start; i < end; i++) {
+    pageIndices.push(i);
+  }
+
+  tbody.innerHTML = pageData.map((r, pi) => {
+    const itemKey = r.title + "||" + r.url;
+    const checked = selectedItems.has(itemKey) ? "checked" : "";
+    const statusTag = r.status === "completed" ? "tag-green"
+      : r.status === "failed" ? "tag-red"
+      : r.status === "downloading" ? "tag-blue"
+      : r.status === "skipped" ? "tag-amber"
+      : "tag-accent";
+    const statusText = r.status === "completed" ? "完成"
+      : r.status === "failed" ? "失败"
+      : r.status === "downloading" ? "下载中"
+      : r.status === "skipped" ? "跳过"
+      : r.status === "searching" ? "搜索中"
+      : "等待";
+    const methodTag = (r.match_method || "").includes("书名") ? "tag-accent"
+      : (r.match_method || "").includes("简介") ? "tag-green"
+      : (r.match_method || "").includes("正文") ? "tag-amber" : "tag-red";
+
+    const dlBtn = r.status === "completed" || r.status === "downloading"
+      ? `<span class="tag ${statusTag}">${statusText}</span>`
+      : `<button class="btn btn-sm btn-outline" onclick="downloadSingle('${esc(itemKey)}')">下载</button>`;
+
+    return `<tr>
+      <td><input type="checkbox" class="checkbox" ${checked} onchange="toggleRow('${esc(itemKey)}', this.checked)"></td>
+      <td><strong>${esc(r.title)}</strong>${r.error ? `<br><span style="font-size:10px;color:var(--red)">${esc(r.error)}</span>` : ""}</td>
+      <td>${esc(r.author)}</td>
+      <td><span class="tag tag-green">${esc(r.source)}</span></td>
+      <td><span class="tag ${statusTag}">${statusText}</span></td>
+      <td><span class="tag ${methodTag}">${esc(r.match_method)}</span> <span style="font-size:10px;color:var(--text3)">${esc(r.match_detail)}</span></td>
+      <td>${dlBtn}</td>
+    </tr>`;
+  }).join("");
+
+  // 渲染分页
+  renderPagination(paginationEl, currentPage, totalPages, total, (p) => {
+    currentPage = p;
+    renderResults();
+  });
+}
+
+function renderPagination(container, current, totalPages, total, onPageChange) {
+  if (totalPages <= 1) {
+    container.innerHTML = `<span class="page-info">共 ${total} 条</span>`;
+    return;
+  }
+  let html = "";
+  html += `<button class="btn btn-sm btn-outline" ${current <= 1 ? "disabled" : ""} onclick="void(0)">&laquo;</button>`;
+
+  const maxVisible = 7;
+  let startPage = Math.max(1, current - Math.floor(maxVisible / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+  if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
+
+  if (startPage > 1) {
+    html += `<button class="btn btn-sm btn-outline" data-page="1">1</button>`;
+    if (startPage > 2) html += `<span class="page-info">...</span>`;
+  }
+
+  for (let p = startPage; p <= endPage; p++) {
+    html += `<button class="btn btn-sm ${p === current ? 'btn-primary active-page' : 'btn-outline'}" data-page="${p}">${p}</button>`;
+  }
+
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) html += `<span class="page-info">...</span>`;
+    html += `<button class="btn btn-sm btn-outline" data-page="${totalPages}">${totalPages}</button>`;
+  }
+
+  html += `<button class="btn btn-sm btn-outline" ${current >= totalPages ? "disabled" : ""} data-page="${current + 1}">&raquo;</button>`;
+  html += `<span class="page-info">${current}/${totalPages} 页，共 ${total} 条</span>`;
+
+  container.innerHTML = html;
+  container.querySelectorAll("button[data-page]").forEach(btn => {
+    btn.onclick = () => {
+      const p = parseInt(btn.dataset.page);
+      if (p >= 1 && p <= totalPages) onPageChange(p);
+    };
+  });
+  // 上一页/下一页
+  const prevBtn = container.querySelector("button:first-child");
+  const nextBtn = container.querySelectorAll("button[data-page]");
+  if (prevBtn && !prevBtn.dataset.page) {
+    prevBtn.onclick = () => { if (current > 1) onPageChange(current - 1); };
+  }
+}
+
+function toggleRow(itemKey, checked) {
+  if (checked) selectedItems.add(itemKey);
+  else selectedItems.delete(itemKey);
+}
+
+function selectAll() {
+  filteredResults.forEach(r => selectedItems.add(r.title + "||" + r.url));
+  renderResults();
+}
+function deselectAll() {
+  selectedItems.clear();
+  renderResults();
+}
+function toggleAll(cb) {
+  if (cb.checked) selectAll();
+  else deselectAll();
+}
+
+// ─── 下载 ───
+async function startDownload() {
+  if (!selectedItems.size) return alert("请先选择要下载的小说");
+  // 从allResults中找出选中的项目
+  const selected = allResults.filter(r => selectedItems.has(r.title + "||" + r.url));
+  if (!selected.length) return alert("未找到选中的小说数据");
+
+  setStatus("running", `下载中 (${selected.length} 本)...`);
+
+  await fetch("/api/download", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ results: selected })
+  });
+
+  startPolling();
+}
+
+async function downloadSingle(itemKey) {
+  const r = allResults.find(r => (r.title + "||" + r.url) === itemKey);
+  if (!r) return;
+
+  setStatus("running", `下载: ${r.title}...`);
+
+  await fetch("/api/download-single", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: r.title, url: r.url, source: r.source })
+  });
+
+  startPolling();
+}
+
+async function stopSearch() {
+  await fetch("/api/stop", { method: "POST" });
+  setStatus("idle", "已停止");
+  if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+}
+
+// ─── 历史 ───
+async function loadHistory() {
+  try {
+    const statusFilter = document.getElementById("history-status-filter").value;
+    let url = `/api/history?limit=${historyPerPage}&offset=${(historyPage - 1) * historyPerPage}`;
+    const resp = await fetch(url);
+    let data = await resp.json();
+    if (statusFilter) data = data.filter(r => r.status === statusFilter);
+
+    const body = document.getElementById("history-body");
+    const paginationEl = document.getElementById("history-pagination");
+
+    if (!data.length) {
+      body.innerHTML = '<div class="empty-state">暂无下载记录</div>';
+      paginationEl.style.display = "none";
+      return;
+    }
+
+    body.innerHTML = data.map(r => {
+      const statusTag = r.status === "completed" ? "tag-green"
+        : r.status === "failed" ? "tag-red" : "tag-amber";
+      const statusText = r.status === "completed" ? "完成"
+        : r.status === "failed" ? "失败" : r.status;
+      return `<div class="history-item">
+        <div>
+          <strong>${esc(r.title)}</strong>
+          <span style="color:var(--text2);margin-left:8px">${esc(r.author)}</span>
+          <span class="tag ${statusTag}" style="margin-left:8px">${statusText}</span>
+          <span class="tag tag-green" style="margin-left:4px">${esc(r.site_name)}</span>
+          <span style="font-size:11px;color:var(--text3);margin-left:8px">${esc(r.match_method || "")}</span>
+        </div>
+        <span style="font-size:11px;color:var(--text3)">${r.completed_at || r.created_at || ""}</span>
+      </div>`;
+    }).join("");
+
+    paginationEl.style.display = "flex";
+    const totalHistoryPages = Math.max(1, Math.ceil(data.length / historyPerPage));
+    renderPagination(paginationEl, historyPage, totalHistoryPages, data.length, (p) => {
+      historyPage = p;
+      loadHistory();
+    });
+  } catch(e) {}
+}
+
+// ─── 配置 ───
+async function loadConfig() {
+  try {
+    const resp = await fetch("/api/config");
+    const cfg = await resp.json();
+    document.getElementById("cfg-concurrency").value = cfg.crawler?.concurrency || 3;
+    document.getElementById("cfg-delay").value = cfg.crawler?.request_delay || 1.5;
+    document.getElementById("cfg-results").value = cfg.search?.results_per_site || 20;
+    document.getElementById("cfg-pages").value = cfg.search?.max_pages || 5;
+    document.getElementById("cfg-regex").value = cfg.search?.regex_filter?.all_combined || "";
+  } catch(e) {}
+}
+
+async function saveConfig() {
+  const cfg = {
+    crawler: {
+      concurrency: parseInt(document.getElementById("cfg-concurrency").value),
+      request_delay: parseFloat(document.getElementById("cfg-delay").value),
+    },
+    search: {
+      results_per_site: parseInt(document.getElementById("cfg-results").value),
+      max_pages: parseInt(document.getElementById("cfg-pages").value),
+      regex_filter: { all_combined: document.getElementById("cfg-regex").value },
+    }
+  };
+  await fetch("/api/config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cfg)
+  });
+  alert("配置已保存");
+}
+
+function esc(s) {
+  if (!s) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+</script>
+</body>
+</html>

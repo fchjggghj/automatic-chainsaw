@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>爬虫实时进度</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #0d1117; color: #c9d1d9; font-size: 14px; }
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+h1 { font-size: 20px; color: #58a6ff; margin-bottom: 16px; text-align: center; }
+.status-bar { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.status-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.status-dot.idle { background: #484f58; }
+.status-dot.running { background: #3fb950; animation: blink 1s infinite; }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.status-text { font-size: 16px; font-weight: 600; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; text-align: center; }
+.stat-value { font-size: 28px; font-weight: 700; }
+.stat-label { font-size: 12px; color: #8b949e; margin-top: 4px; }
+.v-green { color: #3fb950; }
+.v-blue { color: #58a6ff; }
+.v-red { color: #f85149; }
+.v-amber { color: #d29922; }
+.v-purple { color: #bc8cff; }
+.current-info { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+.current-info h2 { font-size: 14px; color: #8b949e; margin-bottom: 10px; }
+.info-row { display: flex; gap: 24px; flex-wrap: wrap; }
+.info-item { display: flex; align-items: center; gap: 6px; }
+.info-item .label { color: #8b949e; font-size: 12px; }
+.info-item .value { color: #f0f6fc; font-weight: 600; font-size: 15px; }
+.progress-section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+.progress-section h2 { font-size: 14px; color: #8b949e; margin-bottom: 10px; }
+.progress-bar-outer { height: 20px; background: #21262d; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+.progress-bar-inner { height: 100%; background: linear-gradient(90deg, #238636, #3fb950); border-radius: 10px; transition: width 0.5s; min-width: 0; }
+.progress-text { font-size: 12px; color: #8b949e; text-align: right; }
+.log-section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px 20px; }
+.log-section h2 { font-size: 14px; color: #8b949e; margin-bottom: 10px; }
+.log-area { max-height: 300px; overflow-y: auto; background: #0d1117; border-radius: 6px; padding: 12px; font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; line-height: 1.6; color: #8b949e; white-space: pre-wrap; word-break: break-all; }
+.log-area::-webkit-scrollbar { width: 6px; }
+.log-area::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+.refresh-info { text-align: center; color: #484f58; font-size: 11px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>智能小说爬虫 — 实时进度监控</h1>
+
+  <div class="status-bar">
+    <span class="status-dot idle" id="status-dot"></span>
+    <span class="status-text" id="status-text">连接中...</span>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-value v-blue" id="s-searched">0</div><div class="stat-label">搜索原始结果</div></div>
+    <div class="stat-card"><div class="stat-value v-purple" id="s-filtered">0</div><div class="stat-label">正则过滤后</div></div>
+    <div class="stat-card"><div class="stat-value v-green" id="s-downloaded">0</div><div class="stat-label">已下载</div></div>
+    <div class="stat-card"><div class="stat-value v-red" id="s-failed">0</div><div class="stat-label">失败</div></div>
+    <div class="stat-card"><div class="stat-value v-amber" id="s-skipped">0</div><div class="stat-label">跳过</div></div>
+    <div class="stat-card"><div class="stat-value v-green" id="s-replaced">0</div><div class="stat-label">替换</div></div>
+  </div>
+
+  <div class="current-info">
+    <h2>当前处理</h2>
+    <div class="info-row">
+      <div class="info-item"><span class="label">关键词:</span><span class="value" id="i-kw">-</span></div>
+      <div class="info-item"><span class="label">站点:</span><span class="value" id="i-site">-</span></div>
+      <div class="info-item"><span class="label">小说:</span><span class="value" id="i-novel">-</span></div>
+    </div>
+  </div>
+
+  <div class="progress-section">
+    <h2>下载进度</h2>
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="dl-bar" style="width:0%"></div></div>
+    <div class="progress-text" id="dl-text">0 / 0</div>
+  </div>
+
+  <div class="log-section">
+    <h2>运行日志（最近50条）</h2>
+    <div class="log-area" id="log-area">等待日志...</div>
+  </div>
+
+  <div class="refresh-info">每2秒自动刷新 | <a href="/" style="color:#58a6ff">返回主界面</a></div>
+</div>
+
+<script>
+function update() {
+  Promise.all([
+    fetch('/api/progress').then(r => r.json()),
+    fetch('/api/logs?limit=50').then(r => r.json()),
+  ]).then(([prog, logData]) => {
+    const s = prog.stats || {};
+    const t = prog.tasks || {};
+
+    // 状态
+    const dot = document.getElementById('status-dot');
+    const stxt = document.getElementById('status-text');
+    if (prog.running) {
+      dot.className = 'status-dot running';
+      stxt.textContent = '运行中';
+      stxt.style.color = '#3fb950';
+    } else {
+      dot.className = 'status-dot idle';
+      stxt.textContent = '空闲';
+      stxt.style.color = '#8b949e';
+    }
+
+    // 统计
+    document.getElementById('s-searched').textContent = s.searched || 0;
+    document.getElementById('s-filtered').textContent = s.filtered || 0;
+    document.getElementById('s-downloaded').textContent = s.downloaded || 0;
+    document.getElementById('s-failed').textContent = s.failed || 0;
+    document.getElementById('s-skipped').textContent = s.skipped || 0;
+    document.getElementById('s-replaced').textContent = s.replaced || 0;
+
+    // 当前信息
+    document.getElementById('i-kw').textContent = prog.current_keyword || '-';
+    document.getElementById('i-site').textContent = prog.current_site || '-';
+    document.getElementById('i-novel').textContent = prog.current_novel || '-';
+
+    // 进度条
+    const total = t.total || 0;
+    const done = (t.completed || 0) + (t.skipped || 0) + (t.failed || 0);
+    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+    document.getElementById('dl-bar').style.width = pct + '%';
+    document.getElementById('dl-text').textContent = `${done} / ${total} (${pct}%)  完成:${t.completed||0}  跳过:${t.skipped||0}  失败:${t.failed||0}`;
+
+    // 日志
+    const logs = (logData.logs || []).map(l => `[${l.time}] ${l.msg}`).join('\n');
+    const logEl = document.getElementById('log-area');
+    logEl.textContent = logs || '暂无日志';
+    logEl.scrollTop = logEl.scrollHeight;
+  }).catch(e => {
+    document.getElementById('status-text').textContent = '连接失败';
+    document.getElementById('status-text').style.color = '#f85149';
+  });
+}
+
+update();
+setInterval(update, 2000);
+</script>
+</body>
+</html>
